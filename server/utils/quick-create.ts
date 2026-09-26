@@ -1,17 +1,16 @@
 export const QUICK_CREATE_TTL_SECONDS = 7 * 24 * 60 * 60
 
-export interface QuickCreateRequest {
+export interface QuickCreateRoute {
   slug: string
-  targetUrl: string
 }
 
-export function parseQuickCreateRequest(requestUrl: URL): QuickCreateRequest | null {
-  const pathname = requestUrl.pathname.replace(/^\//, '')
+export function parseQuickCreateRoute(requestUrl: URL): QuickCreateRoute | null {
+  const pathname = requestUrl.pathname.replace(/^\/+/, '')
   const separator = pathname.indexOf('/')
   if (separator <= 0)
     return null
 
-  const slug = pathname.slice(0, separator)
+  const rawSlug = pathname.slice(0, separator)
   const rawTarget = pathname.slice(separator + 1)
   if (!rawTarget)
     return null
@@ -29,19 +28,22 @@ export function parseQuickCreateRequest(requestUrl: URL): QuickCreateRequest | n
   if (!/^https?:\/\//i.test(target))
     return null
 
-  let targetUrl: URL
   try {
-    targetUrl = new URL(target)
+    return { slug: decodeURIComponent(rawSlug) }
   }
   catch {
     return null
   }
+}
 
-  for (const [key, value] of requestUrl.searchParams)
-    targetUrl.searchParams.append(key, value)
+export function isSafeQuickCreateReturnPath(value: string): boolean {
+  if (!value.startsWith('/') || value.startsWith('//'))
+    return false
 
-  return {
-    slug,
-    targetUrl: targetUrl.toString(),
+  try {
+    return parseQuickCreateRoute(new URL(value, 'https://sink.invalid')) !== null
+  }
+  catch {
+    return false
   }
 }
